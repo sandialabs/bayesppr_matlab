@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bayesppr
-          path: release/bayesppr.mltbx
+          path: release/BayesPPR.mltbx
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -48,7 +48,7 @@ jobs:
         with:
           # unpacks default artifact into release/
           # if `name: artifact` is omitted, the action will create extra parent dir
-          pattern: bayesppr-*
+          pattern: BayesPPR-*
           path: ./release/
       - name: Create Release
         id: create_release
@@ -66,6 +66,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/bayesppr-ubuntu-latest/bayesppr.mltbx
-          asset_name: bayesppr.mltbx
+          asset_path: ./release/bayesppr-ubuntu-latest/BayesPPR.mltbx
+          asset_name: BayesPPR.mltbx
           asset_content_type: application/mltbx
