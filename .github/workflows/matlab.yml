@@ -48,7 +48,7 @@ jobs:
         with:
           # unpacks default artifact into release/
           # if `name: artifact` is omitted, the action will create extra parent dir
-          pattern: BayesPPR-*
+          pattern: BayesPPR*
           path: ./release/
       - name: Create Release
         id: create_release
