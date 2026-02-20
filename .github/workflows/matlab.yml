@@ -36,7 +36,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BayesPPR
+          name: BayesPPR.mltbx
           path: release/BayesPPR.mltbx
   release:
     needs: build
