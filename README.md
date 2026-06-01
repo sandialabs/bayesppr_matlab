@@ -1,5 +1,7 @@
 [![Pipeline Status](https://github.com/sandialabs/bayesppr_matlab/actions/workflows/matlab.yml/badge.svg)](https://github.com/sandialabs/bayesppr_matlab/actions/workflows/matlab.yml)
 
+![](logo.png)
+
 # BayesPPR_matlab
 
 A MATLAB implementation of Bayesian Projection Pursuit Regression (BayesPPR).
