@@ -11,6 +11,7 @@ classdef bpprSamples
         coefs
         s2
         var_coefs
+        residSD
     end
 
     methods
