@@ -49,7 +49,7 @@ classdef bpprModel < handle
             ylabel('density')
         end
 
-        function preds = predict(obj, newdata, mcmc_use)
+        function preds = predict(obj, newdata, options)
             % BPPR prediction using new inputs (after training).
 
             % newdata: matrix of predictors with dimension nxp, where n is the number of prediction points and
@@ -59,8 +59,9 @@ classdef bpprModel < handle
             arguments
                 obj
                 newdata
-                mcmc_use = nan;
+                options.mcmc_use = NaN
             end
+            mcmc_use = options.mcmc_use;
 
             [n, ~] = size(newdata);
 
