@@ -103,7 +103,7 @@ if specs.n_draws > 1
             end
         end
 
-        if it == specs.n_pre
+        if it == specs.n_pre+1
             state.phase = 'post-burn';
         end
 
