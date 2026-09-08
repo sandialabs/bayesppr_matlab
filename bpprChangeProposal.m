@@ -22,11 +22,16 @@ classdef bpprChangeProposal
         sse
         w_feat
         wfeat_norm
+        valid
     end
 
     methods
         function obj = bpprChangeProposal(state, data, prior, specs)
-            obj.idx_ridge = randsample(state.idx_ridge_quant, 1);
+            obj.valid = true;
+            % Draw one of the quantitative ridge functions. Indexing explicitly
+            % rather than calling randsample on the vector, because randsample
+            % treats a one-element vector as a population size.
+            obj.idx_ridge = state.idx_ridge_quant(randi(numel(state.idx_ridge_quant)));
 
             obj.n_act = state.n_act(obj.idx_ridge);
             obj.feat = state.feat(obj.idx_ridge, 1:obj.n_act);
@@ -39,17 +44,23 @@ classdef bpprChangeProposal
             end
 
             obj.proj = data.X_st(:,obj.feat) * obj.proj_dir;  % get proposed projections
-            
-            max_knot0 = quantile(obj.proj, prior.p_dat_max);
-            rg_knot0 = (max_knot0 - min(obj.proj))./prior.prob_relu;
-            knot0 = max_knot0 - rg_knot0 * rand(1);
-            obj.knots = [knot0, quantile(obj.proj(obj.proj > knot0), prior.knot_quants)];
-            if length(unique(obj.knots)) < length(obj.knots)  % duplicates
-                obj.ridge_basis = nan;
-                return;
-            end
 
-            obj.ridge_basis = get_mns_basis(obj.proj, obj.knots);
+            if state.ridge_type(obj.idx_ridge) == "cont"  % Are any features continuous for this ridge function?
+                max_knot0 = quantile(obj.proj, prior.p_dat_max);
+                rg_knot0 = (max_knot0 - min(obj.proj))./prior.prob_relu;
+                knot0 = max_knot0 - rg_knot0 * rand(1);
+                obj.knots = [knot0, quantile(obj.proj(obj.proj > knot0), prior.knot_quants)];
+                if length(unique(obj.knots)) < length(obj.knots)  % duplicates
+                    obj.ridge_basis = nan;
+                    obj.valid = false;
+                    return;
+                end
+
+                obj.ridge_basis = get_mns_basis(obj.proj, obj.knots);
+            else
+                obj.knots = nan;
+                obj.ridge_basis = obj.proj;
+            end
 
             % inner product of proposed new basis functions
             PtP = obj.ridge_basis' * obj.ridge_basis;

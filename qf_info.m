@@ -14,10 +14,13 @@ classdef qf_info
             % Get the quadratic form y'X solve(X'X) X'y,
             % as well as least squares beta and cholesky of X'X
 
+            % qf is set to NaN on failure so that callers' ~isnan(qf) guard is
+            % explicit rather than relying on the behaviour of if on an empty.
             try
                 R = chol(BtB);
             catch
                 obj.fullrank = false;
+                obj.qf = nan;
                 return
             end
 
@@ -25,6 +28,7 @@ classdef qf_info
             if length(dr) > 1
                 if max(dr(2:end))/min(dr) > 1e3
                     obj.fullrank = false;
+                    obj.qf = nan;
                     return
                 end
             end

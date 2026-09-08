@@ -68,10 +68,10 @@ classdef bpprModel < handle
             tmp_obj = obj.data.standardize(newdata);
             newdata_s = tmp_obj.X_st_new;
 
-            if isnan(mcmc_use)
+            if isscalar(mcmc_use) && isnan(mcmc_use)
                 mcmc_use = 1:obj.specs.n_keep;
             else
-                if max(mcmc_use) > (obj.specs.n_keep+1)
+                if max(mcmc_use) > obj.specs.n_keep
                     error('invalid mcmc_use')
                 end
             end
@@ -89,21 +89,37 @@ classdef bpprModel < handle
                     calc_all_bases = true;
                 end
                 if obj.samples.n_ridge(mcmc_use(i)) > 0
+                    ridge_type = obj.samples.ridge_type{mcmc_use(i)};
                     basis_idx = 1:1;
                     for j = 1:obj.samples.n_ridge(mcmc_use(i))
-                        basis_idx = (basis_idx(end)+1):(basis_idx(end)+obj.prior.df_spline);
                         n_act = obj.samples.n_act(mcmc_use(i),j);
-                        knots = squeeze(obj.samples.knots(mcmc_use(i),j,:))';
-                        if calc_all_bases
-                            feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
-                            proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
-                            proj = newdata_s(:,feat) * proj_dir;
-                            ridge_basis{j} = get_mns_basis(proj,knots);
-                        elseif n_act ~= obj.samples.n_act(mcmc_use(i-1),j) || knots(1) ~= obj.samples.knots(mcmc_use(i-1),j,1)
-                            feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
-                            proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
-                            proj = newdata_s(:,feat) * proj_dir;
-                            ridge_basis{j} = get_mns_basis(proj,knots);
+                        if ridge_type(j) == "cont"
+                            basis_idx = (basis_idx(end)+1):(basis_idx(end)+obj.prior.df_spline);
+                            knots = squeeze(obj.samples.knots(mcmc_use(i),j,:))';
+                            if calc_all_bases || ...
+                                    n_act ~= obj.samples.n_act(mcmc_use(i-1),j) || ...
+                                    knots(1) ~= obj.samples.knots(mcmc_use(i-1),j,1)
+                                feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
+                                proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
+                                proj = newdata_s(:,feat) * proj_dir;
+                                ridge_basis{j} = get_mns_basis(proj,knots);
+                            end
+                        else  % no continuous features in this basis
+                            basis_idx = (basis_idx(end)+1):(basis_idx(end)+1);
+                            if ridge_type(j) == "cat"  % all categorical features in this basis
+                                if calc_all_bases || n_act ~= obj.samples.n_act(mcmc_use(i-1),j)
+                                    feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
+                                    ridge_basis{j} = get_cat_basis(newdata_s(:,feat));
+                                end
+                            else  % some discrete quantitative features in this basis
+                                proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
+                                if calc_all_bases || ...
+                                        n_act ~= obj.samples.n_act(mcmc_use(i-1),j) || ...
+                                        any(proj_dir(:)' ~= squeeze(obj.samples.proj_dir(mcmc_use(i-1),j,1:n_act))')
+                                    feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
+                                    ridge_basis{j} = newdata_s(:,feat) * proj_dir;
+                                end
+                            end
                         end
 
                         preds(i, :) = preds(i, :) + (ridge_basis{j} * obj.samples.coefs(mcmc_use(i), basis_idx)')';

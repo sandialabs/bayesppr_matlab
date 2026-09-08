@@ -44,13 +44,13 @@ classdef bpprPrior
                 obj.n_dat_min = min(20, 0.1*data.n);
             end
             if obj.n_dat_min <= obj.df_spline
-                warning("n_dat_min too small. If n_dat_min was set by default , df_spline is large compared to the sample size. Setting nDatMin = df_spline + 1")
+                warning("n_dat_min too small. If n_dat_min was set by default, df_spline is large compared to the sample size. Setting n_dat_min = df_spline + 1")
                 obj.n_dat_min = obj.df_spline+1;
             end
             obj.p_dat_max = 1.0 - obj.n_dat_min / data.n;
 
             if isnan(obj.n_act_max)
-                n_cat = 0;
+                n_cat = sum(data.feat_type == "cat");
                 obj.n_act_max = min(3, data.p - n_cat) + min(3, ceil(n_cat/2));
             end
 

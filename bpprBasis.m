@@ -41,11 +41,11 @@ classdef bpprBasis
 
             if ncores == 1
                 obj.bm_list = cell(1,obj.nbasis);
+                % bppr takes name-value options, so expand the struct rather
+                % than passing the fields positionally.
+                bppr_args = namedargs2cell(opts);
                 for ii = 1:obj.nbasis
-                    obj.bm_list{ii} = bppr(obj.X, obj.newy(ii,:)', opts.n_ridge_mean, opts.n_ridge_max, opts.n_act_max, ...
-                        opts.df_spline, opts.prob_relu, opts.prior_coefs, opts.shape_var_coefs, opts.scale_var_coefs, ...
-                        opts.n_dat_min, opts.scale_proj_dir_prop, opts.adapt_act_feat, opts.w_n_act, opts.w_feat, ...
-                        opts.n_post, opts.n_burn, opts.n_adapt, opts.n_thin, opts.silent);
+                    obj.bm_list{ii} = bppr(obj.X, obj.newy(ii,:)', bppr_args{:});
                 end
             else
                 temp = PoolBPPR(obj.X, obj.newy, opts);
@@ -74,14 +74,14 @@ classdef bpprBasis
                 ncores = 1
             end
 
-            if isnan(mcmc_use)
+            if isscalar(mcmc_use) && isnan(mcmc_use)
                 mcmc_use = 1:obj.bm_list{1}.specs.n_keep;
             end
 
             if ncores == 1
                 pred_coefs = cell(1,obj.nbasis);
                 for i = 1:obj.nbasis
-                    pred_coefs{i} = obj.bm_list{i}.predict(X, mcmc_use);
+                    pred_coefs{i} = obj.bm_list{i}.predict(X, 'mcmc_use', mcmc_use);
                 end
             else
                 temp = PoolBPPRPredict(X, mcmc_use, obj.bm_list);

@@ -88,40 +88,39 @@ state = bpprState(data, prior, specs);
 samples = bpprSamples(prior, specs, state);
 
 % run MCMC
-if specs.n_draws > 1
+if ~silent
+    obj = ProgressBar(specs.n_draws, 'Title', 'Running BPPR MCMC');
+end
 
-    if ~silent
-        obj = ProgressBar(specs.n_draws, 'Title', 'Running BPPR MCMC');
-    end
-
-    for it = 1:specs.n_draws
-        if it == specs.n_adapt
-            if specs.n_burn > 0 
-                state.phase = 'burn';
-            else 
-                state.phase = 'post-burn';
-            end
-        end
-
-        if it == specs.n_pre+1
+% "it" is 1-based here, so the phase boundaries and the thinning offset are
+% shifted by one relative to a 0-based iteration counter.
+for it = 1:specs.n_draws
+    if it == specs.n_adapt + 1
+        if specs.n_burn > 0
+            state.phase = 'burn';
+        else
             state.phase = 'post-burn';
         end
+    end
 
-        % update the state
-        state = state.update(data, prior, specs);
+    if it == specs.n_pre+1
+        state.phase = 'post-burn';
+    end
 
-        if strcmpi(state.phase, 'post-burn') && (mod(it-specs.n_burn, specs.n_thin) == 0)
-            % write to samles
-            samples = samples.writeState(state);
-            state.idx = state.idx + 1;
-        end
-        if ~silent
-            obj.step([], [], []);
-        end
+    % update the state
+    state = state.update(data, prior, specs);
+
+    if strcmpi(state.phase, 'post-burn') && (mod(it - 1 - specs.n_burn, specs.n_thin) == 0)
+        % write to samples
+        samples = samples.writeState(state);
+        state.idx = state.idx + 1;
     end
     if ~silent
-        obj.release()
+        obj.step([], [], []);
     end
-
-    model = bpprModel(data, prior, specs, samples);
 end
+if ~silent
+    obj.release()
+end
+
+model = bpprModel(data, prior, specs, samples);

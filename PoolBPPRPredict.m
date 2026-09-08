@@ -15,7 +15,7 @@ classdef PoolBPPRPredict
         end
 
         function pred = listpredict(obj, i)
-            pred = obj.bm_list(i).predict(obj.X, obj.mcmc_use);
+            pred = obj.bm_list{i}.predict(obj.X, 'mcmc_use', obj.mcmc_use);
         end
 
         function out = predict(obj, ncores, nlist)
@@ -23,10 +23,10 @@ classdef PoolBPPRPredict
                 parpool(ncores);
             end
             out = cell(1,nlist);
-            bar = ProgressBar(nrow_y, ...
+            bar = ProgressBar(nlist, ...
                 'IsParallel', true, ...
                 'WorkerDirectory', pwd, ...
-                'Title', 'Running MCMC Chains' ...
+                'Title', 'Predicting' ...
                 );
             bar.setup([], [], []);
             parfor i = 1:nlist

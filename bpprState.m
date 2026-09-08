@@ -56,7 +56,7 @@ classdef bpprState < handle
             % other things to track
             obj.n_basis_ridge = [1];
             obj.n_basis_total = sum(obj.n_basis_ridge);
-            obj.ridge_type = [];
+            obj.ridge_type = strings(1,0);
             obj.idx_ridge_quant = [];
             obj.n_quant = 0;
             obj.basis_mat = ones(data.n,1);
@@ -95,8 +95,10 @@ classdef bpprState < handle
             obj.knots(prop.idx_ridge, :) = prop.knots;
             obj.proj_dir(prop.idx_ridge, 1:prop.n_act) = prop.proj_dir;
 
-            obj.idx_ridge_quant = [obj.idx_ridge_quant, prop.idx_ridge];
-            obj.n_quant = prop.n_quant;
+            if prop.ridge_type ~= "cat"
+                obj.idx_ridge_quant = [obj.idx_ridge_quant, prop.idx_ridge];
+                obj.n_quant = prop.n_quant;
+            end
             obj.ridge_type = [obj.ridge_type, prop.ridge_type];
 
             obj.basis_idx{prop.idx_ridge+1} = prop.basis_idx;
@@ -124,14 +126,20 @@ classdef bpprState < handle
             obj.n_basis_total = obj.n_basis_total - prop.n_basis;
             obj.n_ridge = obj.n_ridge - 1;
 
-            obj.n_quant = obj.n_quant - 1;
-            obj.idx_ridge_quant(prop.idx_ridge) = [];
-            
+            if obj.ridge_type(prop.idx_ridge) ~= "cat"
+                obj.n_quant = obj.n_quant - 1;
+                % Remove the entry whose VALUE is prop.idx_ridge, not the entry
+                % sitting at that position.
+                obj.idx_ridge_quant(obj.idx_ridge_quant == prop.idx_ridge) = [];
+            end
+
             for k = 1:length(obj.idx_ridge_quant)
                 if obj.idx_ridge_quant(k) > prop.idx_ridge
                     obj.idx_ridge_quant(k) = obj.idx_ridge_quant(k) - 1;
                 end
             end
+
+            obj.ridge_type(prop.idx_ridge) = [];
 
             obj.basis_mat(:, obj.basis_idx{prop.idx_ridge+1}) = [];
             obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total) = obj.BtB(prop.idx_basis, prop.idx_basis);
@@ -202,7 +210,7 @@ classdef bpprState < handle
             if strcmpi(move_type,'birth')
                 % generate birth proposal
                 prop = bpprBirthProposal(obj, data, prior, specs);
-                if ~isnan(prop.ridge_basis)
+                if prop.valid
                     % update quadratic forms just in case proposal is accepted
                     obj.BtB(1:obj.n_basis_total, prop.basis_idx) = prop.BtP;
                     obj.BtB(prop.basis_idx, 1:obj.n_basis_total) = prop.BtP';
@@ -234,7 +242,7 @@ classdef bpprState < handle
                 % chage step
                 prop = bpprChangeProposal(obj, data, prior, specs);
 
-                if ~isnan(prop.ridge_basis)
+                if prop.valid
                     % calculate log(mh acceptance probability)
                     prop = prop.get_log_mh(obj, data, prior);
 

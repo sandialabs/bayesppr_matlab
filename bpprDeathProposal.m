@@ -47,7 +47,11 @@ classdef bpprDeathProposal
             obj.idx_basis(state.basis_idx{obj.idx_ridge + 1}) = [];
 
             obj.n_ridge = state.n_ridge - 1;
-            obj.n_quant = state.n_quant - 1;
+            if state.ridge_type(obj.idx_ridge) == "cat"
+                obj.n_quant = state.n_quant;
+            else
+                obj.n_quant = state.n_quant - 1;
+            end
         end
 
         function obj = get_log_mh(obj, state, data, prior)

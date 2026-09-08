@@ -21,11 +21,13 @@ classdef bpprBirthProposal
         log_mh
         log_mh_bd
         sse
+        valid
     end
 
     methods
         function obj = bpprBirthProposal(state, data, prior, specs)
             obj.n_ridge = state.n_ridge + 1;
+            obj.valid = true;
 
             obj.n_act = randsample(prior.n_act_max, 1, true, state.w_n_act_norm);
             if specs.adapt_act_feat
@@ -37,33 +39,53 @@ classdef bpprBirthProposal
                     obj.feat = datasample(1:data.p, obj.n_act, 'Replace', false, 'Weights', state.w_feat_norm);
                 end
                 if obj.n_act > 1 && obj.n_act < prior.n_act_max
-                    state.log_mh_act_feat = state.log_mh_act_feat - lchoose(data.p, obj.n_act) + log(dwallenius(state.w_feat_norm, obj.feat));
+                    % Nott, Kuk and Duc for feat
+                    state.log_mh_act_feat = state.log_mh_act_feat - (lchoose(data.p, obj.n_act) + log(dwallenius(state.w_feat_norm, obj.feat)));
                 end
             else
                 % Propose features to include
                 obj.feat = datasample(1:data.p, obj.n_act, 'Replace', false, 'Weights', state.w_feat_norm);
-            end 
+            end
 
-            obj.n_quant = state.n_quant + 1;
-            if obj.n_act == 1
-                obj.proj_dir = randsample([-1, 1],1);
+            if all(data.feat_type(obj.feat) == "cat")  % Are all of the proposed features categorical?
+                obj.ridge_type = "cat";
+                obj.n_quant = state.n_quant;
+                obj.proj_dir = nan;
+                obj.knots = nan;
+                obj.ridge_basis = get_cat_basis(data.X_st(:, obj.feat));
+                obj.n_basis = 1;
             else
-                % propose direction
-                obj.proj_dir = rps(prior.proj_dir_mn{obj.n_act}, 0.0);
+                obj.n_quant = state.n_quant + 1;
+                if obj.n_act == 1
+                    obj.proj_dir = randsample([-1, 1],1);
+                else
+                    % propose direction
+                    obj.proj_dir = rps(prior.proj_dir_mn{obj.n_act}, 0.0);
+                end
+                obj.proj = data.X_st(:, obj.feat) * obj.proj_dir;
+
+                if any(data.feat_type(obj.feat) == "cont")  % Are any proposed features continuous?
+                    obj.ridge_type = "cont";
+                    max_knot0 = quantile(obj.proj, prior.p_dat_max);
+                    rg_knot0 = (max_knot0 - min(obj.proj)) ./ prior.prob_relu;
+                    knot0 = max_knot0 - rg_knot0 .* rand();
+                    obj.knots = [knot0, quantile(obj.proj(obj.proj > knot0), prior.knot_quants)];
+                    if length(unique(obj.knots)) < length(obj.knots)  % duplicates
+                        obj.ridge_basis = nan;
+                        obj.valid = false;
+                        return;
+                    end
+                    % Get proposed basis function
+                    obj.ridge_basis = get_mns_basis(obj.proj, obj.knots);
+                    obj.n_basis = prior.df_spline;
+                else
+                    % The proposed features are a mix of categorical and discrete quantitative
+                    obj.ridge_type = "disc";
+                    obj.knots = nan;
+                    obj.ridge_basis = obj.proj;
+                    obj.n_basis = 1;
+                end
             end
-            obj.proj = data.X_st(:, obj.feat) * obj.proj_dir;
-            obj.ridge_type='cont';
-            max_knot0 = quantile(obj.proj, prior.p_dat_max);
-            rg_knot0 = (max_knot0 - min(obj.proj)) ./ prior.prob_relu;
-            knot0 = max_knot0 - rg_knot0 .* rand();
-            obj.knots = [knot0, quantile(obj.proj(obj.proj > knot0), prior.knot_quants)];
-            if length(unique(obj.knots)) < length(obj.knots)  % duplicates
-                obj.ridge_basis = nan;
-                return;
-            end
-            % Get proposed basis function
-            obj.ridge_basis = get_mns_basis(obj.proj, obj.knots);
-            obj.n_basis = prior.df_spline;
 
             % inner product of proposed new basis functions
             obj.PtP = obj.ridge_basis' * obj.ridge_basis;

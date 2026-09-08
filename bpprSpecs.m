@@ -30,22 +30,22 @@ classdef bpprSpecs
             obj.n_pre = obj.n_adapt + obj.n_burn;
             obj.n_draws = obj.n_pre + obj.n_post;
 
-            if isnan(w_n_act)
+            if isscalar(w_n_act) && isnan(w_n_act)
                 obj.w_n_act = nan;
             else
                 obj.w_n_act = w_n_act;
             end
-            if isnan(w_feat)
+            if isscalar(w_feat) && isnan(w_feat)
                 obj.w_feat = nan;
             else
                 obj.w_feat = w_feat;
             end
             obj.adapt_act_feat = adapt_act_feat;
 
-            if isnan(scale_proj_dir_prop)
-                obj.proj_dir_prop_prec = 1000.0;
+            if isscalar(scale_proj_dir_prop) && isnan(scale_proj_dir_prop)
+                obj.proj_dir_prop_prec = 1000.0;   % scale_proj_dir_prop = 0.002
             else
-                if (scale_proj_dir_prop > 0 && scale_proj_dir_prop <= 1)
+                if ~(scale_proj_dir_prop > 0 && scale_proj_dir_prop <= 1)
                     error('scale_proj_dir_prop must be in (0, 1]')
                 end
                 inv_scale_proj_dir_prop = 1/scale_proj_dir_prop;
@@ -54,23 +54,26 @@ classdef bpprSpecs
         end
 
         function obj = calibrate(obj, data, prior)
-            for j=1:length(data.feat_type)
-                if strcmpi(data.feat_type(j),'')
+            % Fill in defaults before zeroing weights, so that the loop below has
+            % a vector to write into.
+            if isscalar(obj.w_n_act) && isnan(obj.w_n_act)
+                obj.w_n_act = ones(prior.n_act_max,1);
+            end
+
+            if isscalar(obj.w_feat) && isnan(obj.w_feat)
+                obj.w_feat = ones(data.p,1);
+            end
+
+            % Constant features can never be active
+            for j = 1:length(data.feat_type)
+                if data.feat_type(j) == ""
                     obj.w_feat(j) = 0.0;
                 end
             end
 
             if strcmpi(prior.prior_coefs,'flat')
-                obj.n_data = obj.n_pre;
+                obj.n_adapt = obj.n_pre;
                 obj.n_burn = 0;
-            end
-
-            if isnan(obj.w_n_act)
-                obj.w_n_act = ones(prior.n_act_max,1);
-            end
-
-            if isnan(obj.w_feat)
-                obj.w_feat = ones(data.p,1);
             end
         end
 

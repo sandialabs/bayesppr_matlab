@@ -56,10 +56,10 @@ classdef bpprPCAsetup
             % * right - eigenvalues (squared singular values), colored according to principal components
             cs = cumsum(obj.evals)/sum(obj.evals) * 100;
 
-            if nvargin < 2
+            if nargin < 2
                 npc = NaN;
                 percVar = NaN;
-            elseif nvargin < 1
+            elseif nargin < 3
                 percVar = NaN;
             end
 

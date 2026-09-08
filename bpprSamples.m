@@ -29,9 +29,10 @@ classdef bpprSamples
             obj.proj_dir = zeros(specs.n_keep, prior.n_ridge_max, prior.n_act_max);
             obj.knots = zeros(specs.n_keep, prior.n_ridge_max, prior.df_spline+2);
             obj.coefs = zeros(specs.n_keep, prior.df_spline*prior.n_ridge_max + 1);
+            obj.s2 = zeros(specs.n_keep,1);
             if strcmpi(prior.prior_coefs,'zs')
                 obj.var_coefs = zeros(specs.n_keep,1);
-            elseif strpcmpi(prior.prior_coefs,'flat')
+            elseif strcmpi(prior.prior_coefs,'flat')
                 obj.var_coefs = nan;
             end
 
@@ -42,6 +43,7 @@ classdef bpprSamples
 
         function obj = writeState(obj, state)
             obj.n_ridge(state.idx) = state.n_ridge;
+            obj.ridge_type{state.idx} = state.ridge_type;
             obj.n_act(state.idx,:) = state.n_act;
             obj.feat(state.idx,:, :) = state.feat;
             obj.proj_dir(state.idx,:, :) = state.proj_dir;
