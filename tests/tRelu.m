@@ -1,6 +1,14 @@
 classdef tRelu < matlab.unittest.TestCase
     % Tests for relu.m
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            % Source functions live in the project root (parent of tests/).
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function positiveUnchanged(tc)
             x = [0.5; 1; 100];

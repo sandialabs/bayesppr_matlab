@@ -1,6 +1,13 @@
 classdef tGetLogMhBd < matlab.unittest.TestCase
     % Tests for get_log_mh_bd.m
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function zeroRidgeProp(tc)
             tc.verifyEqual(get_log_mh_bd(0, 0, 10), 0);

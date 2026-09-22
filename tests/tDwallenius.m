@@ -3,6 +3,13 @@ classdef tDwallenius < matlab.unittest.TestCase
     % Multivariate Wallenius' noncentral hypergeometric density with some
     % variables fixed.
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function allFeaturesSelectedReturnsOne(tc)
             wfeat_norm = [0.25 0.25 0.25 0.25];

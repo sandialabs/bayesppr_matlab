@@ -1,6 +1,13 @@
 classdef tRps < matlab.unittest.TestCase
     % Tests for rps.m (draw from power-spherical distribution)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (TestMethodSetup)
         function seed(~)
             rng(4242);

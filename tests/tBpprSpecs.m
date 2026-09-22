@@ -1,6 +1,13 @@
 classdef tBpprSpecs < matlab.unittest.TestCase
     % Tests for bpprSpecs.m (constructor + calibrate)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function thinningMath(tc)
             % n_post = 100, n_thin = 3 -> n_post reduced to 99, n_keep = 33

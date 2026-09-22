@@ -1,6 +1,13 @@
 classdef tBpprPCA < matlab.unittest.TestCase
     % Integration tests for bpprPCA / bpprPCAsetup (multivariate response).
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (TestMethodSetup)
         function seed(~)
             rng(3030);

@@ -1,6 +1,13 @@
 classdef tBpprData < matlab.unittest.TestCase
     % Tests for bpprData.m (summarize / standardize)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function featureTypeClassification(tc)
             n = 40;

@@ -1,6 +1,13 @@
 classdef tGetMoveType < matlab.unittest.TestCase
     % Tests for get_move_type.m
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (TestMethodSetup)
         function seed(~)
             rng(20260921);

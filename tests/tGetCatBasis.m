@@ -1,6 +1,13 @@
 classdef tGetCatBasis < matlab.unittest.TestCase
     % Tests for get_cat_basis.m
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function singleColumnUnchanged(tc)
             Xj = [0; 1; 1; 0];

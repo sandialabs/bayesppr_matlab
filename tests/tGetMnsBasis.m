@@ -1,6 +1,13 @@
 classdef tGetMnsBasis < matlab.unittest.TestCase
     % Tests for get_mns_basis.m (natural / modified natural spline basis)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function outputSizeDfFromKnots(tc)
             % df = n_knots - 2

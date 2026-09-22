@@ -1,6 +1,13 @@
 classdef tBpprFit < matlab.unittest.TestCase
     % Integration / smoke tests for the full bppr fit -> predict path.
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (TestMethodSetup)
         function seed(~)
             rng(2026);

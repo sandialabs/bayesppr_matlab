@@ -1,6 +1,13 @@
 classdef tBpprPrior < matlab.unittest.TestCase
     % Tests for bpprPrior.m (constructor + calibrate)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function knotQuantsFromDfSpline(tc)
             prior = tBpprPrior.makePrior(4);

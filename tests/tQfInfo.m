@@ -1,6 +1,13 @@
 classdef tQfInfo < matlab.unittest.TestCase
     % Tests for qf_info.m
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function wellConditionedQuadraticForm(tc)
             rng(7);

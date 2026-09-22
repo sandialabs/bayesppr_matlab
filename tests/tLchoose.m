@@ -3,6 +3,13 @@ classdef tLchoose < matlab.unittest.TestCase
     % lchoose(n,k) returns log( 1 / ((n+1) * nchoosek(n,k)) )
     %              = -log(nchoosek(n,k)) - log(n+1)
 
+    methods (TestClassSetup)
+        function addProjectRootToPath(tc)
+            projectRoot = fileparts(fileparts(mfilename('fullpath')));
+            tc.applyFixture(matlab.unittest.fixtures.PathFixture(projectRoot));
+        end
+    end
+
     methods (Test)
         function matchesNchoosek(tc)
             cases = [5 2; 10 0; 10 10; 8 3; 20 7];
