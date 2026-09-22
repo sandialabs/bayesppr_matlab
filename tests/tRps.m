@@ -26,7 +26,11 @@ classdef tRps < matlab.unittest.TestCase
         end
 
         function unitNormAcrossKappa(tc)
-            mu = [1; 0; 0];
+            % Use a non-degenerate mean direction. rps has a removable
+            % singularity when mu is exactly +e_1 (uhat becomes the zero
+            % vector); the codebase only ever passes mu = repelem(1/sqrt(a),a),
+            % which is never a canonical basis vector.
+            mu = ones(3,1) / sqrt(3);
             for kappa = [0, 1, 10, 1000]
                 theta = rps(mu, kappa);
                 tc.verifyEqual(norm(theta), 1, 'AbsTol', 1e-9, ...
@@ -36,12 +40,12 @@ classdef tRps < matlab.unittest.TestCase
 
         function highConcentrationNearMu(tc)
             % With very large kappa the draw should concentrate near mu.
-            mu = [1; 0; 0];
+            mu = ones(3,1) / sqrt(3);
             acc = zeros(3,1);
-            for i = 1:50
+            for i = 1:200
                 acc = acc + rps(mu, 1e5);
             end
-            meanDir = acc / 50;
+            meanDir = acc / 200;
             meanDir = meanDir / norm(meanDir);
             tc.verifyGreaterThan(mu' * meanDir, 0.9);
         end

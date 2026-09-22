@@ -1,7 +1,9 @@
 classdef tLchoose < matlab.unittest.TestCase
     % Tests for lchoose.m
-    % lchoose(n,k) returns log( 1 / ((n+1) * nchoosek(n,k)) )
-    %              = -log(nchoosek(n,k)) - log(n+1)
+    % lchoose(n,k) = -betaln(1+n-k, 1+k) - log(n+1)
+    % Since B(n-k+1, k+1) = 1 / ((n+1) * nchoosek(n,k)),
+    %   -betaln(...) = log((n+1) * nchoosek(n,k)),
+    % so lchoose(n,k) = log(nchoosek(n,k)).
 
     methods (TestClassSetup)
         function addProjectRootToPath(tc)
@@ -16,8 +18,8 @@ classdef tLchoose < matlab.unittest.TestCase
             for i = 1:size(cases,1)
                 n = cases(i,1);
                 k = cases(i,2);
-                expected = -log(nchoosek(n,k)) - log(n+1);
-                tc.verifyEqual(lchoose(n,k), expected, 'RelTol', 1e-10, ...
+                expected = log(nchoosek(n,k));
+                tc.verifyEqual(lchoose(n,k), expected, 'AbsTol', 1e-10, ...
                     sprintf('n=%d k=%d', n, k));
             end
         end
