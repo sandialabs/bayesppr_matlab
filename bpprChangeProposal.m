@@ -62,6 +62,10 @@ classdef bpprChangeProposal
                 obj.ridge_basis = obj.proj;
             end
 
+            if prior.center_basis
+                obj.ridge_basis = obj.ridge_basis - mean(obj.ridge_basis, 1);
+            end
+
             % inner product of proposed new basis functions
             PtP = obj.ridge_basis' * obj.ridge_basis;
             BtP = state.basis_mat' * obj.ridge_basis;
@@ -83,7 +87,7 @@ classdef bpprChangeProposal
                 if obj.qf_info.qf < data.ssy
                     obj.sse = data.ssy - state.c_var_coefs .* obj.qf_info.qf;
                     % compute the acceptance probability
-                    obj.log_mh = -data.n/2 * (log(obj.sse) - log(state.sse));
+                    obj.log_mh = prior.log_lik_sse(obj.sse, data.n) - prior.log_lik_sse(state.sse, data.n);
                 end
             end
         end

@@ -28,6 +28,15 @@ function model = bppr(X, y, options)
 % n_adapt: number of adaption samples
 % n_thin: number of samples to thin
 % silent: print out timing information of fitting
+% intercept: include a constant basis function (default true)
+% center_basis: center each ridge basis column over the training inputs, so the
+%   ridge functions average to zero over the training data (default false).
+%   With intercept = false this makes the fitted function mean-zero over the
+%   training inputs.
+% shape_s2, scale_s2: inverse-gamma prior on the error variance; the default
+%   (0, 0) is the improper p(s2) ~ 1/s2 used originally
+% s2_fixed: hold the error variance at this value instead of sampling it
+%   (default NaN, i.e. sample it)
 % returns an object of class bpprModel, which includes predict and plot functions.
 
 arguments
@@ -51,6 +60,11 @@ arguments
     options.n_adapt = 0
     options.n_thin = 1
     options.silent = false
+    options.intercept = true
+    options.center_basis = false
+    options.shape_s2 = 0
+    options.scale_s2 = 0
+    options.s2_fixed = nan
 end
 
 n_ridge_mean = options.n_ridge_mean;
@@ -75,6 +89,11 @@ silent = options.silent;
 data = bpprData(X, y);
 prior = bpprPrior(n_ridge_mean, n_ridge_max, n_act_max, df_spline, prob_relu, prior_coefs, shape_var_coefs, scale_var_coefs, n_dat_min);
 specs = bpprSpecs(n_post, n_burn, n_adapt, n_thin, w_n_act, w_feat, adapt_act_feat, scale_proj_dir_prop);
+prior.intercept = options.intercept;
+prior.center_basis = options.center_basis;
+prior.shape_s2 = options.shape_s2;
+prior.scale_s2 = options.scale_s2;
+prior.s2_fixed = options.s2_fixed;
 
 % pre-processing
 data = data.summarize(prior);

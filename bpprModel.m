@@ -77,57 +77,69 @@ classdef bpprModel < handle
             end
             n_use = length(mcmc_use);
 
-            ridge_basis = cell(max(obj.samples.n_ridge),1);
+            % With center_basis, each ridge basis column had its training mean
+            % subtracted during fitting, so the same means (recomputed from
+            % the stored training inputs) are subtracted here.
+            center = obj.prior.center_basis;
+            n_int = double(obj.prior.intercept);
+            X_train = obj.data.X_st;
+
+            n_ridge_max = max([obj.samples.n_ridge(mcmc_use); 0]);
+            ridge_basis = cell(n_ridge_max, 1);
+            ridge_key = cell(n_ridge_max, 1);
             preds = zeros(n_use,n);
 
             for i = 1:n_use
-                calc_all_bases = false;
-                preds(i, :) = obj.samples.coefs(mcmc_use(i), 1);
-                if i==1
-                    calc_all_bases = true;
-                elseif (obj.samples.n_ridge(mcmc_use(i)) ~= obj.samples.n_ridge(mcmc_use(i-1)))
-                    calc_all_bases = true;
+                s = mcmc_use(i);
+                if n_int > 0
+                    preds(i, :) = obj.samples.coefs(s, 1);
                 end
-                if obj.samples.n_ridge(mcmc_use(i)) > 0
-                    ridge_type = obj.samples.ridge_type{mcmc_use(i)};
-                    basis_idx = 1:1;
-                    for j = 1:obj.samples.n_ridge(mcmc_use(i))
-                        n_act = obj.samples.n_act(mcmc_use(i),j);
-                        if ridge_type(j) == "cont"
-                            basis_idx = (basis_idx(end)+1):(basis_idx(end)+obj.prior.df_spline);
-                            knots = squeeze(obj.samples.knots(mcmc_use(i),j,:))';
-                            if calc_all_bases || ...
-                                    n_act ~= obj.samples.n_act(mcmc_use(i-1),j) || ...
-                                    knots(1) ~= obj.samples.knots(mcmc_use(i-1),j,1)
-                                feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
-                                proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
-                                proj = newdata_s(:,feat) * proj_dir;
-                                ridge_basis{j} = get_mns_basis(proj,knots);
-                            end
-                        else  % no continuous features in this basis
-                            basis_idx = (basis_idx(end)+1):(basis_idx(end)+1);
-                            if ridge_type(j) == "cat"  % all categorical features in this basis
-                                if calc_all_bases || n_act ~= obj.samples.n_act(mcmc_use(i-1),j)
-                                    feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
-                                    ridge_basis{j} = get_cat_basis(newdata_s(:,feat));
-                                end
-                            else  % some discrete quantitative features in this basis
-                                proj_dir = squeeze(obj.samples.proj_dir(mcmc_use(i),j,1:n_act));
-                                if calc_all_bases || ...
-                                        n_act ~= obj.samples.n_act(mcmc_use(i-1),j) || ...
-                                        any(proj_dir(:)' ~= squeeze(obj.samples.proj_dir(mcmc_use(i-1),j,1:n_act))')
-                                    feat = squeeze(obj.samples.feat(mcmc_use(i),j,1:n_act))';
-                                    ridge_basis{j} = newdata_s(:,feat) * proj_dir;
-                                end
-                            end
-                        end
-
-                        preds(i, :) = preds(i, :) + (ridge_basis{j} * obj.samples.coefs(mcmc_use(i), basis_idx)')';
+                n_basis = n_int;
+                for j = 1:obj.samples.n_ridge(s)
+                    ridge_type = obj.samples.ridge_type{s}(j);
+                    n_act = obj.samples.n_act(s,j);
+                    feat = squeeze(obj.samples.feat(s,j,1:n_act))';
+                    proj_dir = reshape(obj.samples.proj_dir(s,j,1:n_act), [], 1);
+                    knots = reshape(obj.samples.knots(s,j,:), 1, []);
+                    if ridge_type == "cont"
+                        nb_j = obj.prior.df_spline;
+                    else
+                        nb_j = 1;
                     end
+                    basis_idx = (n_basis+1):(n_basis+nb_j);
+                    n_basis = n_basis + nb_j;
+
+                    % Recompute the basis only when this ridge function differs
+                    % from the one cached at position j.
+                    key = [double(ridge_type == "cont") + 2*double(ridge_type == "cat"), ...
+                        n_act, feat, proj_dir', knots];
+                    if ~isequaln(key, ridge_key{j})   % NaN knots/directions for "cat"
+                        ridge_basis{j} = bpprModel.ridgeBasis(newdata_s, ridge_type, feat, proj_dir, knots);
+                        if center
+                            ridge_basis{j} = ridge_basis{j} - ...
+                                mean(bpprModel.ridgeBasis(X_train, ridge_type, feat, proj_dir, knots), 1);
+                        end
+                        ridge_key{j} = key;
+                    end
+
+                    preds(i, :) = preds(i, :) + (ridge_basis{j} * obj.samples.coefs(s, basis_idx)')';
                 end
             end
 
         end
 
+    end
+
+    methods (Static)
+        function B = ridgeBasis(Xs, ridge_type, feat, proj_dir, knots)
+            % Basis columns of one ridge function at standardized inputs Xs.
+            if ridge_type == "cont"
+                B = get_mns_basis(Xs(:, feat) * proj_dir, knots);
+            elseif ridge_type == "cat"
+                B = get_cat_basis(Xs(:, feat));
+            else
+                B = Xs(:, feat) * proj_dir;
+            end
+        end
     end
 end

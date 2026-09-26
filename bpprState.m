@@ -42,8 +42,14 @@ classdef bpprState < handle
             obj.proj_dir = zeros(prior.n_ridge_max, prior.n_act_max);
             obj.knots = zeros(prior.n_ridge_max, prior.df_spline + 2);
             obj.coefs = zeros(prior.df_spline*prior.n_ridge_max+1, 1);
-            obj.coefs(1)= mean(data.y);
-            obj.s2 = 1.0;
+            if prior.intercept
+                obj.coefs(1)= mean(data.y);
+            end
+            if isnan(prior.s2_fixed)
+                obj.s2 = 1.0;
+            else
+                obj.s2 = prior.s2_fixed;
+            end
 
             if strcmpi(prior.prior_coefs,'zs')
                 obj.var_coefs = prior.scale_var_coefs ./ prior.shape_var_coefs;
@@ -53,14 +59,16 @@ classdef bpprState < handle
                 obj.c_var_coefs = 1.0;
             end
 
-            % other things to track
-            obj.n_basis_ridge = [1];
+            % other things to track.  Block 1 of the basis is the intercept,
+            % which is empty (zero columns) when prior.intercept is false.
+            n_int = double(prior.intercept);
+            obj.n_basis_ridge = n_int;
             obj.n_basis_total = sum(obj.n_basis_ridge);
             obj.ridge_type = strings(1,0);
             obj.idx_ridge_quant = [];
             obj.n_quant = 0;
-            obj.basis_mat = ones(data.n,1);
-            obj.basis_idx = {1:1};
+            obj.basis_mat = ones(data.n, n_int);
+            obj.basis_idx = {1:n_int};
             obj.BtB = zeros(prior.n_ridge_max * prior.df_spline + 1, prior.n_ridge_max * prior.df_spline + 1);
             obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total) = obj.basis_mat' * obj.basis_mat;
             obj.Bty = zeros(prior.n_ridge_max * prior.df_spline + 1, 1);
@@ -187,8 +195,37 @@ classdef bpprState < handle
             obj.sse = prop.sse;
         end
 
-        function obj = sampleSDresid(obj, data)
-            obj.s2 = 1./gamrnd(data.n/2, 2/obj.sse);
+        function obj = sampleSDresid(obj, data, prior)
+            if nargin < 3
+                obj.s2 = 1./gamrnd(data.n/2, 2/obj.sse);
+            elseif ~isnan(prior.s2_fixed)
+                obj.s2 = prior.s2_fixed;
+            elseif prior.shape_s2 == 0 && prior.scale_s2 == 0
+                obj.s2 = 1./gamrnd(data.n/2, 2/obj.sse);
+            else
+                obj.s2 = 1./gamrnd(prior.shape_s2 + data.n/2, 1/(prior.scale_s2 + obj.sse/2));
+            end
+        end
+
+        function obj = setResponse(obj, data)
+            % Point the chain at a new response vector, keeping the ridge
+            % functions.  For use inside a larger Gibbs sampler (bpprGibbs),
+            % where the response is itself a latent variable that changes
+            % between updates.  Only the quantities that involve y change;
+            % the basis and its cross-products do not.
+            nb = obj.n_basis_total;
+            obj.Bty(1:nb) = obj.basis_mat' * data.y;
+            obj.qf_info = qf_info(obj.BtB(1:nb, 1:nb), obj.Bty(1:nb));
+            if ~strcmpi(obj.phase, 'adapt')
+                obj.qf_info = obj.qf_info.get_inv_chol();
+            end
+            obj.sse = data.ssy - obj.c_var_coefs * obj.qf_info.qf;
+        end
+
+        function mu = fitted(obj)
+            % Current regression function at the training inputs.
+            nb = obj.n_basis_total;
+            mu = obj.basis_mat * obj.coefs(1:nb);
         end
 
         function obj = sampleCoefs(obj)
@@ -255,7 +292,7 @@ classdef bpprState < handle
             end
 
             if ~strcmpi(obj.phase,'adapt')
-                obj = obj.sampleSDresid(data);
+                obj = obj.sampleSDresid(data, prior);
                 obj = obj.sampleCoefs();
 
                 if strcmpi(prior.prior_coefs,'zs')

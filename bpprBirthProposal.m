@@ -87,13 +87,20 @@ classdef bpprBirthProposal
                 end
             end
 
+            if prior.center_basis
+                obj.ridge_basis = obj.ridge_basis - mean(obj.ridge_basis, 1);
+            end
+
             % inner product of proposed new basis functions
             obj.PtP = obj.ridge_basis' * obj.ridge_basis;
             obj.BtP = state.basis_mat' * obj.ridge_basis;
             obj.Pty = obj.ridge_basis' * data.y;
 
             obj.idx_ridge = state.n_ridge+1;
-            basis_idx_start = state.basis_idx{obj.idx_ridge}(end)+1;
+            % The new ridge function's columns go after all existing ones.
+            % (Counting from n_basis_total rather than the previous block's
+            % last index also works when there is no intercept block.)
+            basis_idx_start = state.n_basis_total+1;
             obj.basis_idx = basis_idx_start:(basis_idx_start+obj.n_basis-1);
         end
 
@@ -108,7 +115,7 @@ classdef bpprBirthProposal
 
                     % compute the acceptance probability
                     obj.log_mh = (state.log_mh_bd - obj.log_mh_bd + state.log_mh_act_feat + ...
-                        -data.n/2 * (log(obj.sse) - log(state.sse)) + ...
+                        prior.log_lik_sse(obj.sse, data.n) - prior.log_lik_sse(state.sse, data.n) + ...
                         log(prior.n_ridge_mean/(state.n_ridge+1)));
                     if strcmpi(prior.prior_coefs, 'zs')
                         obj.log_mh = obj.log_mh - obj.n_basis * log(state.var_coefs+1)/2;
