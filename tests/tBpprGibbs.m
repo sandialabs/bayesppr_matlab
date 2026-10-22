@@ -37,7 +37,7 @@ classdef tBpprGibbs < matlab.unittest.TestCase
             [X, y] = tBpprGibbs.makeData(100);
             mod = bppr(X, y, 'n_post', 40, 'n_burn', 40, 'silent', true, ...
                 'intercept', true, 'center_basis', false);
-            tc.verifyTrue(all(isfinite(mod.predict(X), 'all')));
+            tc.verifyTrue(all(isfinite(mod.predict(X)), 'all'));
             tc.verifyTrue(all(mod.samples.s2 > 0));
         end
 
