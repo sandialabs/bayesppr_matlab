@@ -1,0 +1,30 @@
+name = "bayesppr_matlab"
+
+[project.labels."Toolbox - Toolbox1"]
+"Getting Started Guide" = [
+]
+"App Gallery File" = [
+]
+"Toolbox Image File" = [
+]
+
+[[package]]
+configuration-name = "bayesppr"
+supported-platforms = [
+    "windows",
+    "linux",
+    "macos",
+]
+use-license-bsd = false
+output-folder = "release"
+output-file-name = "BayesPPR.mltbx"
+provider.organization = ""
+provider.name = "J. Derek Tucker"
+provider.email = "jdtuck@sandia.gov"
+name = "bayesppr"
+description = ""
+display-name = "BayesPPR"
+summary = "Bayesian PPR Surrogate Model"
+package-root = "/"
+version = "1.0.2"
+id = "ad2cf291-d92d-4f7e-8648-43257dc07be5"

@@ -1,2 +1,10 @@
 release/
 *.asv
+
+.claude/
+
+.codex/
+
+.opencode-workspace/.config/opencode/
+
+.opencode-workspace/.local/share/applications/
