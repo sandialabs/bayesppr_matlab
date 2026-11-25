@@ -37,7 +37,11 @@ classdef bpprGibbs < handle
     %   shape_s2, scale_s2  inverse-gamma prior on s2 (default 0, 0: the
     %                 original improper p(s2) ~ 1/s2)
     %   s2_fixed      hold s2 fixed at this value (default NaN: sample it)
+    %   s2_init       s2 before the first draw (default 1)
     % n_keep is the number of states save() can record.
+    %
+    % setResponse costs O(nK) for K basis functions: it reuses the basis and
+    % the Cholesky factor of its cross-product, which do not involve y.
 
     properties
         data
@@ -71,6 +75,7 @@ classdef bpprGibbs < handle
                 options.shape_s2 = 0
                 options.scale_s2 = 0
                 options.s2_fixed = nan
+                options.s2_init (1,1) {mustBePositive} = 1
             end
 
             obj.data = bpprData(X, y(:));
@@ -98,6 +103,7 @@ classdef bpprGibbs < handle
             end
 
             obj.state = bpprState(obj.data, obj.prior, obj.specs);
+            if isnan(options.s2_fixed), obj.state.s2 = options.s2_init; end
             obj.state.phase = 'post-burn';
             obj.samples = bpprSamples(obj.prior, obj.specs);
         end
@@ -134,6 +140,16 @@ classdef bpprGibbs < handle
 
         function n = n_ridge(obj)
             n = obj.state.n_ridge;
+        end
+
+        function r = accept_rate(obj)
+            % Fraction of accepted RJMCMC proposals (birth, death, change).
+            r = obj.state.n_acc / max(obj.state.n_prop, 1);
+        end
+
+        function n = n_saved(obj)
+            % Number of states recorded by save().
+            n = obj.state.idx - 1;
         end
 
         function save(obj)

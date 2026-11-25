@@ -127,6 +127,60 @@ classdef tBpprGibbs < matlab.unittest.TestCase
             tc.verifyLessThan(mean((muhat - ftrue).^2), 0.25 * var(ftrue));
         end
 
+        function setResponseReusesTheFactor(tc)
+            % setResponse keeps the Cholesky factor (it does not involve y)
+            % and gives the least-squares fit of the new response.
+            [X, y] = tBpprGibbs.makeData(80);
+            g = bpprGibbs(X, y, 1, 'n_ridge_mean', 3);
+            g.step(20);
+            R0 = g.state.qf_info.chol;
+            y2 = y.^2 / 10;
+            g.setResponse(y2);
+            tc.verifyEqual(g.state.qf_info.chol, R0);
+            B = g.state.basis_mat;
+            tc.verifyEqual(g.state.qf_info.ls_est, (B' * B) \ (B' * y2), 'RelTol', 1e-8);
+            tc.verifyEqual(g.state.qf_info.qf, y2' * B * ((B' * B) \ (B' * y2)), 'RelTol', 1e-8);
+        end
+
+        function acceptRateAndSavedCount(tc)
+            [X, y] = tBpprGibbs.makeData(80);
+            g = bpprGibbs(X, y, 5, 'n_ridge_mean', 3);
+            tc.verifyEqual(g.accept_rate(), 0);
+            g.step(50);
+            tc.verifyEqual(g.state.n_prop, 50);
+            tc.verifyGreaterThan(g.accept_rate(), 0);
+            tc.verifyLessThan(g.accept_rate(), 1);
+            tc.verifyEqual(g.n_saved(), 0);
+            g.save(); g.save();
+            tc.verifyEqual(g.n_saved(), 2);
+        end
+
+        function s2InitIsTheStartingVariance(tc)
+            [X, y] = tBpprGibbs.makeData(50);
+            g = bpprGibbs(X, y, 1, 's2_init', 0.37);
+            tc.verifyEqual(g.s2(), 0.37);
+            g = bpprGibbs(X, y, 1, 's2_init', 0.37, 's2_fixed', 0.2);
+            tc.verifyEqual(g.s2(), 0.2);
+            g.step(5);
+            tc.verifyEqual(g.s2(), 0.2);
+        end
+
+        function emptyCenteredModelWithoutIntercept(tc)
+            % With no intercept the chain starts (and can end up) with no
+            % basis functions at all: the zero function.
+            [X, y] = tBpprGibbs.makeData(80);
+            g = bpprGibbs(X, y - mean(y), 1, 'intercept', false, 'center_basis', true, ...
+                'n_ridge_mean', 0.5);
+            tc.verifyEqual(g.state.n_basis_total, 0);
+            tc.verifyEqual(g.fitted(), zeros(80, 1));
+            g.step(50);
+            tc.verifyGreaterThan(g.n_ridge(), 0);
+            g.setResponse(0.01 * randn(80, 1));   % nothing left to explain
+            g.step(300);
+            tc.verifyEqual(g.n_ridge(), 0);
+            tc.verifyEqual(g.fitted(), zeros(80, 1));
+        end
+
         function flatPriorRejected(tc)
             [X, y] = tBpprGibbs.makeData(50);
             tc.verifyError(@() bpprGibbs(X, y, 5, 'prior_coefs', "flat"), ...

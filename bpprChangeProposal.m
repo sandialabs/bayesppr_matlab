@@ -81,7 +81,7 @@ classdef bpprChangeProposal
         end
 
         function obj = get_log_mh(obj, state, data, prior)
-            obj.qf_info = qf_info(obj.BtB, obj.Bty);
+            obj.qf_info = qf_info(obj.BtB, obj.Bty, prior.intercept);
             obj.log_mh = nan;
             if ~isnan(obj.qf_info.qf)
                 if obj.qf_info.qf < data.ssy

@@ -105,7 +105,7 @@ classdef bpprBirthProposal
         end
 
         function obj = get_log_mh(obj, state, data, prior)
-            obj.qf_info = qf_info(state.BtB(1:(state.n_basis_total+obj.n_basis), 1:(state.n_basis_total + obj.n_basis)), state.Bty(1:(state.n_basis_total + obj.n_basis)));
+            obj.qf_info = qf_info(state.BtB(1:(state.n_basis_total+obj.n_basis), 1:(state.n_basis_total + obj.n_basis)), state.Bty(1:(state.n_basis_total + obj.n_basis)), prior.intercept);
             obj.log_mh = nan;
             if ~isnan(obj.qf_info.qf)
                 if obj.qf_info.qf < data.ssy

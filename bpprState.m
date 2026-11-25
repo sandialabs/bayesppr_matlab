@@ -32,6 +32,8 @@ classdef bpprState < handle
         n_quant
         basis_mat
         log_mh_act_feat
+        n_prop = 0              % RJMCMC proposals made
+        n_acc = 0               % and accepted
     end
 
     methods
@@ -73,7 +75,7 @@ classdef bpprState < handle
             obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total) = obj.basis_mat' * obj.basis_mat;
             obj.Bty = zeros(prior.n_ridge_max * prior.df_spline + 1, 1);
             obj.Bty(1:obj.n_basis_total) = obj.basis_mat' * data.y;
-            obj.qf_info = qf_info(obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total), obj.Bty(1:obj.n_basis_total));
+            obj.qf_info = qf_info(obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total), obj.Bty(1:obj.n_basis_total), prior.intercept);
             obj.qf_info = obj.qf_info.get_inv_chol();
 
             obj.sse = data.ssy - obj.c_var_coefs * obj.qf_info.qf;
@@ -212,13 +214,11 @@ classdef bpprState < handle
             % functions.  For use inside a larger Gibbs sampler (bpprGibbs),
             % where the response is itself a latent variable that changes
             % between updates.  Only the quantities that involve y change;
-            % the basis and its cross-products do not.
+            % the basis, its cross-products and their Cholesky factor do
+            % not, so this costs O(nK) for K basis functions.
             nb = obj.n_basis_total;
             obj.Bty(1:nb) = obj.basis_mat' * data.y;
-            obj.qf_info = qf_info(obj.BtB(1:nb, 1:nb), obj.Bty(1:nb));
-            if ~strcmpi(obj.phase, 'adapt')
-                obj.qf_info = obj.qf_info.get_inv_chol();
-            end
+            obj.qf_info = obj.qf_info.update_y(obj.Bty(1:nb));
             obj.sse = data.ssy - obj.c_var_coefs * obj.qf_info.qf;
         end
 
@@ -260,6 +260,7 @@ classdef bpprState < handle
                     if ~isnan(prop.log_mh)
                         if log(rand()) < prop.log_mh
                             obj = obj.acceptBirth(prop, specs.adapt_act_feat);
+                            obj.n_acc = obj.n_acc + 1;
                         end
                     end
                 end
@@ -273,6 +274,7 @@ classdef bpprState < handle
                 if ~isnan(prop.log_mh)
                     if log(rand()) < prop.log_mh
                         obj = obj.acceptDeath(prop, specs.adapt_act_feat);
+                        obj.n_acc = obj.n_acc + 1;
                     end
                 end
             else
@@ -286,10 +288,12 @@ classdef bpprState < handle
                     if ~isnan(prop.log_mh)
                         if log(rand()) < prop.log_mh
                             obj = obj.acceptChange(prop);
+                            obj.n_acc = obj.n_acc + 1;
                         end
                     end
                 end
             end
+            obj.n_prop = obj.n_prop + 1;
 
             if ~strcmpi(obj.phase,'adapt')
                 obj = obj.sampleSDresid(data, prior);

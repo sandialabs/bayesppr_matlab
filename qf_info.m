@@ -10,9 +10,12 @@ classdef qf_info
 
     methods
 
-        function obj = qf_info(BtB, Bty)
+        function obj = qf_info(BtB, Bty, intercept)
             % Get the quadratic form y'X solve(X'X) X'y,
-            % as well as least squares beta and cholesky of X'X
+            % as well as least squares beta and cholesky of X'X.
+            % With an intercept (the default) the first pivot, the
+            % intercept's, is left out of the conditioning check.
+            if nargin < 3, intercept = true; end
 
             % qf is set to NaN on failure so that callers' ~isnan(qf) guard is
             % explicit rather than relying on the behaviour of if on an empty.
@@ -26,7 +29,8 @@ classdef qf_info
 
             dr = diag(R);
             if length(dr) > 1
-                if max(dr(2:end))/min(dr) > 1e3
+                if intercept, dcheck = dr(2:end); else, dcheck = dr; end
+                if max(dcheck)/min(dr) > 1e3
                     obj.fullrank = false;
                     obj.qf = nan;
                     return
@@ -45,6 +49,14 @@ classdef qf_info
 
         function obj = get_inv_chol(obj)
             obj.inv_chol = obj.chol\eye(obj.dim);
+        end
+
+        function obj = update_y(obj, Bty)
+            % Least squares beta and quadratic form for a new X'y, reusing
+            % the Cholesky factor (and its inverse), which depend only on X.
+            tmp1 = (obj.chol')\Bty;
+            obj.ls_est = obj.chol\tmp1;
+            obj.qf = Bty' * obj.ls_est;
         end
     end
 end
