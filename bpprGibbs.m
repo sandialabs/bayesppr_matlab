@@ -38,6 +38,16 @@ classdef bpprGibbs < handle
     %                 original improper p(s2) ~ 1/s2)
     %   s2_fixed      hold s2 fixed at this value (default NaN: sample it)
     %   s2_init       s2 before the first draw (default 1)
+    %   p_local       probability that a change move is local: the direction
+    %                 is kept and the first knot moves by a uniform step of at
+    %                 most local_width times the width of its prior range
+    %                 (default 0: every change move redraws the knot)
+    %   local_width   (default 0.05)
+    %   p_feat        probability that an update adds an input to a ridge
+    %                 function or drops one, keeping the ridge (see
+    %                 bpprFeatProposal; default 0: none)
+    %   feat_sd       sd of the new input's direction component in an add
+    %                 (default 0.1)
     % n_keep is the number of states save() can record.
     %
     % setResponse costs O(nK) for K basis functions: it reuses the basis and
@@ -76,6 +86,10 @@ classdef bpprGibbs < handle
                 options.scale_s2 = 0
                 options.s2_fixed = nan
                 options.s2_init (1,1) {mustBePositive} = 1
+                options.p_local (1,1) double {mustBeInRange(options.p_local, 0, 1)} = 0
+                options.local_width (1,1) double {mustBePositive} = 0.05
+                options.p_feat (1,1) double {mustBeInRange(options.p_feat, 0, 1)} = 0
+                options.feat_sd (1,1) double {mustBePositive} = 0.1
             end
 
             obj.data = bpprData(X, y(:));
@@ -96,6 +110,10 @@ classdef bpprGibbs < handle
             obj.data = obj.data.summarize(obj.prior);
             obj.prior = obj.prior.calibrate(obj.data);
             obj.specs = obj.specs.calibrate(obj.data, obj.prior);
+            obj.specs.p_local = options.p_local;
+            obj.specs.local_width = options.local_width;
+            obj.specs.p_feat = options.p_feat;
+            obj.specs.feat_sd = options.feat_sd;
             if strcmpi(obj.prior.prior_coefs, 'flat')
                 % calibrate() turns the whole run into adaptation for the flat
                 % prior, which never draws s2 or the coefficients.

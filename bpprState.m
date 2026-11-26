@@ -182,6 +182,34 @@ classdef bpprState < handle
             obj.log_mh_bd = prop.log_mh_bd;
         end
 
+        function obj = acceptFeat(obj, prop, adapt_act_feat)
+            % Install an add-input or drop-input move (bpprFeatProposal).
+            k = prop.idx_ridge;
+            m0 = obj.n_act(k);
+            obj.n_act(k) = prop.n_act;
+            obj.feat(k, :) = 0;
+            obj.feat(k, 1:prop.n_act) = prop.feat;
+            obj.proj_dir(k, :) = 0;
+            obj.proj_dir(k, 1:prop.n_act) = prop.proj_dir;
+            obj.knots(k, :) = prop.knots;
+            obj.BtB(1:obj.n_basis_total, 1:obj.n_basis_total) = prop.BtB;
+            obj.Bty(1:obj.n_basis_total) = prop.Bty;
+            obj.basis_mat(:, obj.basis_idx{k+1}) = prop.ridge_basis;
+            if adapt_act_feat
+                % the weights count the inputs of the current ridges
+                obj.w_n_act(m0) = obj.w_n_act(m0) - 1;
+                obj.w_n_act(prop.n_act) = obj.w_n_act(prop.n_act) + 1;
+                obj.w_n_act_norm = obj.w_n_act / sum(obj.w_n_act);
+                obj.w_feat(prop.new_feat) = obj.w_feat(prop.new_feat) + (2 * prop.add - 1);
+                obj.w_feat_norm = obj.w_feat / sum(obj.w_feat);
+            end
+            obj.qf_info = prop.qf_info;
+            if ~strcmpi(obj.phase, 'adapt')
+                obj.qf_info = obj.qf_info.get_inv_chol();
+            end
+            obj.sse = prop.sse;
+        end
+
         function obj = acceptChange(obj, prop)
             obj.knots(prop.idx_ridge, :) = prop.knots;
             obj.proj_dir(prop.idx_ridge, 1:prop.n_act) = prop.proj_dir;
@@ -242,7 +270,20 @@ classdef bpprState < handle
         end
 
         function obj = update(obj, data, prior, specs)
-            move_type = get_move_type(obj.n_ridge, obj.n_quant, prior.n_ridge_max);
+            if specs.p_feat > 0 && rand() < specs.p_feat
+                % add or drop one input of a ridge (bpprFeatProposal)
+                prop = bpprFeatProposal(obj, data, prior, specs, rand() < 0.5);
+                if prop.valid
+                    prop = prop.get_log_mh(obj, data, prior);
+                    if ~isnan(prop.log_mh) && log(rand()) < prop.log_mh
+                        obj = obj.acceptFeat(prop, specs.adapt_act_feat);
+                        obj.n_acc = obj.n_acc + 1;
+                    end
+                end
+                move_type = "feat";
+            else
+                move_type = get_move_type(obj.n_ridge, obj.n_quant, prior.n_ridge_max);
+            end
 
             if strcmpi(move_type,'birth')
                 % generate birth proposal
@@ -277,9 +318,10 @@ classdef bpprState < handle
                         obj.n_acc = obj.n_acc + 1;
                     end
                 end
-            else
+            elseif strcmpi(move_type, 'change')
                 % chage step
-                prop = bpprChangeProposal(obj, data, prior, specs);
+                local = specs.p_local > 0 && rand() < specs.p_local;
+                prop = bpprChangeProposal(obj, data, prior, specs, local);
 
                 if prop.valid
                     % calculate log(mh acceptance probability)

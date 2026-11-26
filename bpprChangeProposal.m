@@ -26,7 +26,14 @@ classdef bpprChangeProposal
     end
 
     methods
-        function obj = bpprChangeProposal(state, data, prior, specs)
+        function obj = bpprChangeProposal(state, data, prior, specs, local)
+            % local = true: keep the direction and move the first knot by
+            % a uniform step of at most specs.local_width times the width of
+            % its prior range, rejecting steps that leave the range.  The
+            % step is symmetric and the knot's prior is uniform on that
+            % range, so the acceptance ratio is the likelihood ratio, as
+            % for the ordinary change move.
+            if nargin < 5, local = false; end
             obj.valid = true;
             % Draw one of the quantitative ridge functions. Indexing explicitly
             % rather than calling randsample on the vector, because randsample
@@ -37,7 +44,13 @@ classdef bpprChangeProposal
             obj.feat = state.feat(obj.idx_ridge, 1:obj.n_act);
             proj_dir_curr = state.proj_dir(obj.idx_ridge,1:obj.n_act);
 
-            if state.n_act(obj.idx_ridge) == 1
+            if local
+                if state.ridge_type(obj.idx_ridge) ~= "cont"
+                    obj.valid = false;    % nothing to move
+                    return;
+                end
+                obj.proj_dir = proj_dir_curr(:);
+            elseif state.n_act(obj.idx_ridge) == 1
                 obj.proj_dir = randsample([-1, 1], 1);
             else
                 obj.proj_dir = rps(proj_dir_curr, specs.proj_dir_prop_prec);
@@ -48,7 +61,15 @@ classdef bpprChangeProposal
             if state.ridge_type(obj.idx_ridge) == "cont"  % Are any features continuous for this ridge function?
                 max_knot0 = quantile(obj.proj, prior.p_dat_max);
                 rg_knot0 = (max_knot0 - min(obj.proj))./prior.prob_relu;
-                knot0 = max_knot0 - rg_knot0 * rand(1);
+                if local
+                    knot0 = state.knots(obj.idx_ridge, 1) + specs.local_width * rg_knot0 * (2 * rand(1) - 1);
+                    if knot0 > max_knot0 || knot0 < max_knot0 - rg_knot0
+                        obj.valid = false;
+                        return;
+                    end
+                else
+                    knot0 = max_knot0 - rg_knot0 * rand(1);
+                end
                 obj.knots = [knot0, quantile(obj.proj(obj.proj > knot0), prior.knot_quants)];
                 if length(unique(obj.knots)) < length(obj.knots)  % duplicates
                     obj.ridge_basis = nan;

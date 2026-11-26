@@ -14,6 +14,10 @@ classdef bpprSpecs
         w_feat
         adapt_act_feat
         proj_dir_prop_prec
+        p_local = 0         % probability that a change move is local (bpprChangeProposal)
+        local_width = 0.05  % half-width of a local knot move, as a fraction of the knot's prior range
+        p_feat = 0          % probability of an add/drop-input move (bpprFeatProposal)
+        feat_sd = 0.1       % sd of the new input's direction component in an add
     end
 
     methods
